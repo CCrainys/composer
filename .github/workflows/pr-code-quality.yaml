@@ -14,7 +14,8 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/dev' }}
 jobs:
   code-quality:
-    uses: ./.github/workflows/code-quality.yaml
+    runs-on: ubuntu-20.04
+    timeout-minutes: 15
     strategy:
       matrix:
         python_version:
@@ -23,6 +24,31 @@ jobs:
         - "3.11"
         pip_deps:
         - "[dev]"
-    with:
-      python_version: ${{ matrix.python_version }}
-      pip_deps: ${{ matrix.pip_deps }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+    - name: Get Repo Token
+      id: REPO_TOKEN
+      uses: tibdex/github-app-token@v1
+      with:
+        app_id: ${{ secrets.DEVOGE_BOT_APPID }}
+        private_key: ${{ secrets.DEVOGE_BOT_PEM }}
+    - name: Get composite run steps repository
+      uses: actions/checkout@v3
+      with:
+        repository: mosaicml/testing
+        ref: cicd
+        path: ./testing
+        token: ${{ steps.REPO_TOKEN.outputs.token }}
+    - name: Run checks
+      shell: bash
+      run: |
+        ls .
+        ls ./testing
+        ls ./testing/.github
+        ls ./testing/.github/actions
+        ls ./testing/.github/actions/code-quality
+    - uses: ./testing/.github/actions/code-quality
+      with:
+        python_version: ${{ matrix.python_version }}
+        pip_deps: ${{ matrix.pip_deps }}
